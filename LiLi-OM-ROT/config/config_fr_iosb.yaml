@@ -1,7 +1,7 @@
 common:
-  frame_id: "lili_om_rot"
+  frame_id: "lili_om_rot"  #雷达坐标系
   data_set: "iosb"
-  
+
 IMU:
   acc_n: 2000
   gyr_n: 0.0173
@@ -17,10 +17,9 @@ lidar_odometry:
   max_num_iter: 12
   scan_match_cnt: 1
   if_to_deskew: false
-
 backend_fusion:
   max_num_iter: 15
-  loop_closure_on: true
+  loop_closure_on: true  #default true
   local_map_width: 50
   lc_search_radius: 15
   lc_map_width: 25
@@ -32,10 +31,10 @@ backend_fusion:
   lc_time_thres: 60.0
   surf_dist_thres: 0.12
   kd_max_radius: 1.0
-  save_pcd: false
+  save_pcd: true  #false
 
 #extrinsic imu to lidar
-  ql2b_w: 0.7071
+  ql2b_w: 0.7071   #laser frame to imu frame, transform a point from imu into laser
   ql2b_x: 0
   ql2b_y: 0
   ql2b_z: 0.7071

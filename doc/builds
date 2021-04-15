@@ -1,0 +1,15 @@
+git clone https://github.com/Livox-SDK/Livox-SDK.git
+
+proxychains git clone https://github.com/Livox-SDK/Livox-SDK.git
+
+cd Livox-SDK/
+
+cd build && cmake ..
+
+make
+
+sudo make install
+
+proxychains git clone https://github.com/Livox-SDK/livox_ros_driver.git ws_livox/src
+
+catkin_make

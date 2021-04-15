@@ -9,6 +9,8 @@
 #include <cmath>
 #include "utils/math_tools.h"
 
+
+//sharp point 残差(点到直线的距离)
 struct LidarEdgeFactor
 {
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
@@ -69,6 +71,7 @@ struct LidarEdgeFactor
 };
 
 
+//flat points到平面的距离(残差)
 struct LidarPlaneNormFactor
 {
     LidarPlaneNormFactor(Eigen::Vector3d curr_point_,
@@ -93,8 +96,8 @@ struct LidarPlaneNormFactor
         Eigen::Quaternion<T> q_l_b{T(qlb.w()), T(qlb.x()), T(qlb.y()), T(qlb.z())};
         Eigen::Matrix<T, 3, 1> t_l_b{T(tlb.x()), T(tlb.y()), T(tlb.z())};
 
-        point_w = q_l_b.inverse() * (cp - t_l_b);
-        point_w = q_w_curr * point_w + t_w_curr;
+        point_w = q_l_b.inverse() * (cp - t_l_b); //在imu下
+        point_w = q_w_curr * point_w + t_w_curr; //在map下
 
         Eigen::Matrix<T, 3, 1> norm(T(plane_unit_norm.x()), T(plane_unit_norm.y()), T(plane_unit_norm.z()));
         residual[0] = T(score) * (norm.dot(point_w) + T(negative_OA_dot_norm));
@@ -121,6 +124,7 @@ struct LidarPlaneNormFactor
 };
 
 
+//not used
 struct LidarPlaneNormIncreFactor
 {
 

@@ -105,7 +105,7 @@ public:
             qlb3 = 0;
         }
 
-        q_lb = Eigen::Quaterniond(qlb0, qlb1, qlb2, qlb3);
+        q_lb = Eigen::Quaterniond(qlb0, qlb1, qlb2, qlb3); //laser frame to imu frame
 
         sub_Lidar_cloud = nh.subscribe<sensor_msgs::PointCloud2>(lidar_topic, 100, &Preprocessing::cloudHandler, this);
         sub_imu = nh.subscribe<sensor_msgs::Imu>(imu_topic, 200, &Preprocessing::imuHandler, this);
@@ -166,7 +166,7 @@ public:
         Eigen::Vector3d pt_i(pt.x, pt.y, pt.z);
 
         q_si = q_lb * q_si * q_lb.inverse();
-        Eigen::Vector3d pt_s = q_si * pt_i;
+        Eigen::Vector3d pt_s = q_si * pt_i; //去旋转畸变: 把点转换到当前帧的start时刻
 
         PointType p_out;
         p_out.x = pt_s.x();
@@ -178,8 +178,8 @@ public:
 
     void solveRotation(double dt, Eigen::Vector3d angular_velocity)
     {
-        Eigen::Vector3d un_gyr = 0.5 * (gyr_0 + angular_velocity);
-        qIMU *= deltaQ(un_gyr * dt);
+        Eigen::Vector3d un_gyr = 0.5 * (gyr_0 + angular_velocity); //上一imu角速度和当前imu角速度
+        qIMU *= deltaQ(un_gyr * dt); //qIMU：curr laser时刻imu到next laser时刻的imu 的旋转
         gyr_0 = angular_velocity;
     }
 
@@ -207,15 +207,15 @@ public:
         }
 
         if(i < imu_buf.size()) {
-            double dt1 = t_cur - current_time_imu;
-            double dt2 = imu_buf[i]->header.stamp.toSec() - t_cur;
+            double dt1 = t_cur - current_time_imu; //此时current_time_imu是小于t_curr, 且离得最近的imu
+            double dt2 = imu_buf[i]->header.stamp.toSec() - t_cur; //imu_buf[i]是大于t_curr，且离得最近的imu
 
             double w1 = dt2 / (dt1 + dt2);
             double w2 = dt1 / (dt1 + dt2);
 
             rx = w1 * rx + w2 * imu_buf[i]->angular_velocity.x;
             ry = w1 * ry + w2 * imu_buf[i]->angular_velocity.y;
-            rz = w1 * rz + w2 * imu_buf[i]->angular_velocity.z;
+            rz = w1 * rz + w2 * imu_buf[i]->angular_velocity.z;//线性插值出t_curr时刻imu的角速度
             solveRotation(dt1, Eigen::Vector3d(rx, ry, rz));
         }
         current_time_imu = t_cur;
@@ -226,7 +226,7 @@ public:
     {
         imu_buf.push_back(ImuIn);
 
-        if(imu_buf.size() > 600)
+        if(imu_buf.size() > 600) //imu 200hz, 存储3s buffer
             imu_buf[imu_buf.size() - 601] = nullptr;
 
         if (current_time_imu < 0)
@@ -278,7 +278,7 @@ public:
         std::vector<int> indices;
 
         pcl::removeNaNFromPointCloud(lidar_cloud_in, lidar_cloud_in, indices);
-        removeClosedPointCloud(lidar_cloud_in, lidar_cloud_in, 3.0);
+        removeClosedPointCloud(lidar_cloud_in, lidar_cloud_in, 3.0); //删除掉距离雷达3m内的points
 
 
         int cloudSize = lidar_cloud_in.points.size();
@@ -295,7 +295,7 @@ public:
 
 
         if(first_imu)
-            processIMU(time_scan_next);
+            processIMU(time_scan_next); //用curr laser到next laser时间戳之间的imu角速度积分得到qIMU
         if(isnan(qIMU.w()) || isnan(qIMU.x()) || isnan(qIMU.y()) || isnan(qIMU.z())) {
             qIMU = Eigen::Quaterniond::Identity();
         }
@@ -367,7 +367,7 @@ public:
             float relTime = (ori - startOri) / (endOri - startOri);
             point.intensity = scanID + 0.1 * relTime;
 
-            point_undis = undistortion(point, qIMU);
+            point_undis = undistortion(point, qIMU);  //去旋转畸变: 把点转换到当前帧的start时刻
             laserCloudScans[scanID].push_back(point_undis);
         }
 
@@ -512,22 +512,22 @@ public:
         pcl::toROSMsg(*laserCloud, laserCloudOutMsg);
         laserCloudOutMsg.header.stamp = current_cloud_msg.header.stamp;
         laserCloudOutMsg.header.frame_id = frame_id;
-        pub_cutted_cloud.publish(laserCloudOutMsg);
+        pub_cutted_cloud.publish(laserCloudOutMsg); //当前帧所有points
 
         sensor_msgs::PointCloud2 cornerPointsLessSharpMsg;
         pcl::toROSMsg(cornerPointsLessSharp, cornerPointsLessSharpMsg);
         cornerPointsLessSharpMsg.header.stamp = current_cloud_msg.header.stamp;
         cornerPointsLessSharpMsg.header.frame_id = frame_id;
-        pub_edge.publish(cornerPointsLessSharpMsg);
+        pub_edge.publish(cornerPointsLessSharpMsg); //当前帧less sharp points
 
         sensor_msgs::PointCloud2 surfPointsLessFlat2;
         pcl::toROSMsg(surfPointsLessFlat, surfPointsLessFlat2);
         surfPointsLessFlat2.header.stamp = current_cloud_msg.header.stamp;
         surfPointsLessFlat2.header.frame_id = frame_id;
-        pub_surf.publish(surfPointsLessFlat2);
+        pub_surf.publish(surfPointsLessFlat2); //当前帧less flat points
 
-        qIMU = Eigen::Quaterniond::Identity();
-        rIMU = Eigen::Vector3d::Zero();
+        qIMU = Eigen::Quaterniond::Identity(); //处理完当前帧，复位
+        rIMU = Eigen::Vector3d::Zero(); //not used
         //t_pre.tic_toc();
         runtime += t_pre.toc();
         //cout<<"pre_num: "<<++pre_num<<endl;
